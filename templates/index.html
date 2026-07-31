@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Task Manager</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background: #f4f6f9; }
+  .task-card { transition: 0.2s; }
+  .task-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .completed { text-decoration: line-through; color: #888; }
+</style>
+</head>
+<body>
+<div class="container py-5">
+  <h2 class="mb-4 text-center">📝 Task Manager</h2>
+
+  <div class="card p-3 mb-4 shadow-sm">
+    <div class="row g-2">
+      <div class="col-md-4">
+        <input type="text" id="title" class="form-control" placeholder="Task title">
+      </div>
+      <div class="col-md-6">
+        <input type="text" id="description" class="form-control" placeholder="Description (optional)">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" onclick="addTask()">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="taskList"></div>
+</div>
+
+<script>
+const API_URL = "/api/tasks";
+
+async function fetchTasks() {
+  const res = await fetch(API_URL);
+  const tasks = await res.json();
+  renderTasks(tasks);
+}
+
+function renderTasks(tasks) {
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
+  if (tasks.length === 0) {
+    list.innerHTML = `<p class="text-center text-muted">No tasks yet. Add one above.</p>`;
+    return;
+  }
+  tasks.forEach(task => {
+    list.innerHTML += `
+      <div class="card task-card p-3 mb-2 shadow-sm">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="${task.is_completed ? 'completed' : ''}">${task.title}</h5>
+            <p class="mb-1 text-muted">${task.description || ""}</p>
+            <small class="text-secondary">Created: ${task.created_at}</small>
+          </div>
+          <div>
+            <button class="btn btn-sm btn-success me-1" onclick="toggleComplete(${task.id}, ${!task.is_completed})">
+              ${task.is_completed ? "Undo" : "Complete"}
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="deleteTask(${task.id})">Delete</button>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+async function addTask() {
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+  if (!title) { alert("Title is required"); return; }
+
+  await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, description })
+  });
+
+  document.getElementById("title").value = "";
+  document.getElementById("description").value = "";
+  fetchTasks();
+}
+
+async function toggleComplete(id, status) {
+  await fetch(`${API_URL}/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_completed: status })
+  });
+  fetchTasks();
+}
+
+async function deleteTask(id) {
+  if (!confirm("Delete this task?")) return;
+  await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+  fetchTasks();
+}
+
+fetchTasks();
+</script>
+</body>
+</html>
